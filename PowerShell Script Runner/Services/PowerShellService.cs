@@ -12,21 +12,26 @@ namespace PowerShellScriptRunner.Services
             _scriptsDirectory = scriptsDirectory;
         }
 
-        public IEnumerable<string> GetAvailableScripts()
+        public async Task<IEnumerable<string>> GetAvailableScriptsAsync()
         {
             if (!Directory.Exists(_scriptsDirectory))
+            {
                 throw new DirectoryNotFoundException($"Scripts directory not found: {_scriptsDirectory}");
+            }
 
-            return Directory.GetFiles(_scriptsDirectory, "*.ps1");
+            return await Task.Run(() => Directory.GetFiles(_scriptsDirectory, "*.ps1"));
         }
 
-        public List<(string Name, Type DataType)> GetScriptParameters(string scriptPath)
+        public async Task<List<(string Name, Type DataType)>> GetScriptParametersAsync(string scriptPath)
         {
             List<(string, Type)> parameters = new List<(string, Type)>();
 
-            if (!File.Exists(scriptPath)) return parameters;
+            if (!File.Exists(scriptPath))
+            {
+                return parameters;
+            }
 
-            string scriptContent = File.ReadAllText(scriptPath);
+            string scriptContent = await File.ReadAllTextAsync(scriptPath);
 
             Regex regex = new Regex(@"\[\s*(\w+)\s*\]\s*\$(\w+)", RegexOptions.Multiline);
             MatchCollection matches = regex.Matches(scriptContent);
@@ -45,21 +50,23 @@ namespace PowerShellScriptRunner.Services
             return parameters;
         }
 
-        public string ExecuteScript(string scriptPath, Dictionary<string, object> parameters)
+        public async Task<string> ExecuteScriptAsync(string scriptPath, Dictionary<string, object> parameters)
         {
             if (!File.Exists(scriptPath))
+            {
                 throw new FileNotFoundException($"Script not found: {scriptPath}");
+            }
 
             using (PowerShell ps = PowerShell.Create())
             {
-                ps.AddScript(File.ReadAllText(scriptPath));
+                ps.AddScript(await File.ReadAllTextAsync(scriptPath));
 
                 foreach (var param in parameters)
                 {
                     ps.AddParameter(param.Key, param.Value);
                 }
 
-                var results = ps.Invoke();
+                var results = await Task.Run(() => ps.Invoke());
                 return string.Join(Environment.NewLine, results);
             }
         }

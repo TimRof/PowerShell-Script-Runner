@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Windows.Forms;
 using PowerShellScriptRunner.Services;
 
 namespace PowerShellScriptRunner
@@ -17,15 +12,13 @@ namespace PowerShellScriptRunner
         {
             InitializeComponent();
             InitializeScriptsDirectory();
-            LoadLocalScripts();
+            LoadLocalScriptsAsync();
         }
 
         private void InitializeScriptsDirectory()
         {
-            // Get the directory where the application is running
             _scriptsDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Scripts");
 
-            // Create the Scripts directory if it doesn't exist
             if (!Directory.Exists(_scriptsDirectory))
             {
                 Directory.CreateDirectory(_scriptsDirectory);
@@ -34,13 +27,13 @@ namespace PowerShellScriptRunner
             _powerShellService = new PowerShellService(_scriptsDirectory);
         }
 
-        private void LoadLocalScripts()
+        private async void LoadLocalScriptsAsync()
         {
             try
             {
-                var scripts = Directory.GetFiles(_scriptsDirectory, "*.ps1")
-                                       .Select(Path.GetFileName)
-                                       .ToArray();
+                var scripts = await Task.Run(() => Directory.GetFiles(_scriptsDirectory, "*.ps1")
+                                                            .Select(Path.GetFileName)
+                                                            .ToArray());
                 scriptComboBox.Items.Clear();
                 scriptComboBox.Items.AddRange(scripts);
 
@@ -56,12 +49,12 @@ namespace PowerShellScriptRunner
             }
         }
 
-        private void LoadScriptParameters()
+        private async Task LoadScriptParameters()
         {
             if (scriptComboBox.SelectedItem == null) return;
 
             string scriptPath = GetSelectedScriptPath();
-            var parameters = _powerShellService.GetScriptParameters(scriptPath);
+            var parameters = await _powerShellService.GetScriptParametersAsync(scriptPath);
 
             parametersPanel.Controls.Clear();
             _parameterInputs.Clear();
@@ -76,10 +69,7 @@ namespace PowerShellScriptRunner
 
         private void CreateParameterControl(string name, Type type, int yOffset)
         {
-            // Create label
-            Label lbl = new Label { Text = $"{name}:", Top = yOffset };
-
-            // Create control based on parameter type
+            var lbl = new Label { Text = $"{name}:", Top = yOffset };
             Control inputControl = type switch
             {
                 Type t when t == typeof(bool) => new CheckBox { Name = name, Top = yOffset, Left = 100 },
@@ -90,16 +80,12 @@ namespace PowerShellScriptRunner
                 _ => throw new ArgumentException("Unsupported parameter type")
             };
 
-            // Add label and input control to the panel
             parametersPanel.Controls.Add(lbl);
             parametersPanel.Controls.Add(inputControl);
-
-            // Store the control in the dictionary for later use
             _parameterInputs[name] = inputControl;
         }
 
-
-        private void runScriptButton_Click(object sender, EventArgs e)
+        private async void runScriptButton_Click(object sender, EventArgs e)
         {
             if (scriptComboBox.SelectedItem == null) return;
 
@@ -108,7 +94,7 @@ namespace PowerShellScriptRunner
 
             try
             {
-                string output = _powerShellService.ExecuteScript(scriptPath, parameters);
+                string output = await Task.Run(() => _powerShellService.ExecuteScriptAsync(scriptPath, parameters));
                 outputRichTextBox.Text = output;
             }
             catch (Exception ex)
@@ -128,14 +114,13 @@ namespace PowerShellScriptRunner
                     TextBox txtBox => txtBox.Text,
                     CheckBox checkBox => checkBox.Checked,
                     DateTimePicker dateTimePicker => dateTimePicker.Value,
-                    NumericUpDown numericUpDown => numericUpDown.Value,  // Handle int/decimal values
+                    NumericUpDown numericUpDown => numericUpDown.Value,
                     _ => null
                 };
             }
 
             return parameters;
         }
-
 
         private string GetSelectedScriptPath()
         {

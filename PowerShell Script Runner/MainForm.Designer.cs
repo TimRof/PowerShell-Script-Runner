@@ -123,6 +123,7 @@
             Controls.Add(scriptComboBox);
             Controls.Add(panelBorder);
             Name = "MainForm";
+            ShowIcon = false;
             Text = "PowerShell Script Runner";
             ResumeLayout(false);
             PerformLayout();

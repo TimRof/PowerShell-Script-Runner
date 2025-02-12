@@ -4,19 +4,13 @@ namespace PowerShellScriptRunner
 {
     public partial class MainForm : Form
     {
-        private string _scriptsDirectory;
-        private PowerShellService _powerShellService;
-        private Dictionary<string, Control> _parameterInputs = new Dictionary<string, Control>();
+        private readonly string _scriptsDirectory;
+        private readonly PowerShellService _powerShellService;
+        private readonly Dictionary<string, Control> _parameterInputs = new();
 
         public MainForm()
         {
             InitializeComponent();
-            InitializeScriptsDirectory();
-            LoadLocalScriptsAsync();
-        }
-
-        private void InitializeScriptsDirectory()
-        {
             _scriptsDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Scripts");
 
             if (!Directory.Exists(_scriptsDirectory))
@@ -25,23 +19,28 @@ namespace PowerShellScriptRunner
             }
 
             _powerShellService = new PowerShellService(_scriptsDirectory);
+
+            LoadLocalScriptsAsync();
         }
 
         private async void LoadLocalScriptsAsync()
         {
             try
             {
-                var scripts = await Task.Run(() => Directory.GetFiles(_scriptsDirectory, "*.ps1")
-                                                            .Select(Path.GetFileName)
-                                                            .ToArray());
-                scriptComboBox.Items.Clear();
-                scriptComboBox.Items.AddRange(scripts);
+                var scripts = await _powerShellService.GetAvailableScriptsAsync();
 
-                if (scriptComboBox.Items.Count > 0)
+                scriptComboBox.Invoke(() =>
                 {
-                    scriptComboBox.SelectedIndex = 0;
-                    LoadScriptParameters();
-                }
+                    scriptComboBox.Items.Clear();
+                    scriptComboBox.Items.AddRange(scripts.Select(Path.GetFileName).ToArray());
+
+                    if (scriptComboBox.Items.Count > 0)
+                    {
+                        scriptComboBox.SelectedIndex = 0;
+                    }
+                });
+
+                await LoadScriptParametersAsync();
             }
             catch (Exception ex)
             {
@@ -49,35 +48,39 @@ namespace PowerShellScriptRunner
             }
         }
 
-        private async Task LoadScriptParameters()
+        private async Task LoadScriptParametersAsync()
         {
             if (scriptComboBox.SelectedItem == null) return;
 
             string scriptPath = GetSelectedScriptPath();
             var parameters = await _powerShellService.GetScriptParametersAsync(scriptPath);
 
-            parametersPanel.Controls.Clear();
-            _parameterInputs.Clear();
-
-            int yOffset = 10;
-            foreach (var (name, type) in parameters)
+            parametersPanel.Invoke(() =>
             {
-                CreateParameterControl(name, type, yOffset);
-                yOffset += 30;
-            }
+                parametersPanel.Controls.Clear();
+                _parameterInputs.Clear();
+
+                int yOffset = 10;
+                foreach (var (name, type, defaultValue) in parameters)
+                {
+                    CreateParameterControl(name, type, yOffset, defaultValue);
+                    yOffset += 30;
+                }
+            });
         }
 
-        private void CreateParameterControl(string name, Type type, int yOffset)
+
+        private void CreateParameterControl(string name, Type type, int yOffset, object? defaultValue)
         {
             var lbl = new Label { Text = $"{name}:", Top = yOffset };
             Control inputControl = type switch
             {
-                Type t when t == typeof(bool) => new CheckBox { Name = name, Top = yOffset, Left = 100 },
-                Type t when t == typeof(DateTime) => new DateTimePicker { Name = name, Top = yOffset, Left = 100 },
-                Type t when t == typeof(int) => new NumericUpDown { Name = name, Top = yOffset, Left = 100, Width = 200, Minimum = 0, Maximum = 1000000 },
-                Type t when t == typeof(decimal) => new NumericUpDown { Name = name, Top = yOffset, Left = 100, Width = 200, DecimalPlaces = 2, Minimum = 0, Maximum = 1000000 },
-                Type t when t == typeof(string) => new TextBox { Name = name, Top = yOffset, Left = 100, Width = 200 },
-                _ => throw new ArgumentException("Unsupported parameter type")
+                Type t when t == typeof(bool) => new CheckBox { Name = name, Top = yOffset, Left = 100, Checked = defaultValue is bool b && b },
+                Type t when t == typeof(DateTime) => new DateTimePicker { Name = name, Top = yOffset, Left = 100, Value = defaultValue is DateTime dt ? dt : DateTime.Now },
+                Type t when t == typeof(int) => new NumericUpDown { Name = name, Top = yOffset, Left = 100, Width = 200, Minimum = 0, Maximum = 1000000, Value = defaultValue is int i ? i : 0 },
+                Type t when t == typeof(decimal) => new NumericUpDown { Name = name, Top = yOffset, Left = 100, Width = 200, DecimalPlaces = 2, Minimum = 0, Maximum = 1000000, Value = defaultValue is decimal d ? d : 0 },
+                Type t when t == typeof(string) => new TextBox { Name = name, Top = yOffset, Left = 100, Width = 200, Text = defaultValue as string ?? "" },
+                _ => throw new ArgumentException($"Unsupported parameter type: {type}")
             };
 
             parametersPanel.Controls.Add(lbl);
@@ -94,8 +97,8 @@ namespace PowerShellScriptRunner
 
             try
             {
-                string output = await Task.Run(() => _powerShellService.ExecuteScriptAsync(scriptPath, parameters));
-                outputRichTextBox.Text = output;
+                string output = await _powerShellService.ExecuteScriptAsync(scriptPath, parameters);
+                outputRichTextBox.Invoke(() => outputRichTextBox.Text = output);
             }
             catch (Exception ex)
             {
@@ -124,12 +127,12 @@ namespace PowerShellScriptRunner
 
         private string GetSelectedScriptPath()
         {
-            return Path.Combine(_scriptsDirectory, scriptComboBox.SelectedItem.ToString());
+            return Path.Combine(_scriptsDirectory, scriptComboBox.SelectedItem.ToString() ?? string.Empty);
         }
 
-        private void scriptComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        private async void scriptComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            LoadScriptParameters();
+            await LoadScriptParametersAsync();
         }
 
         private void ShowError(string title, Exception ex)

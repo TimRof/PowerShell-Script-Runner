@@ -122,6 +122,7 @@
             Controls.Add(scriptComboBoxLabel);
             Controls.Add(scriptComboBox);
             Controls.Add(panelBorder);
+            FormBorderStyle = FormBorderStyle.FixedSingle;
             Name = "MainForm";
             ShowIcon = false;
             Text = "PowerShell Script Runner";

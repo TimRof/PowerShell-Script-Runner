@@ -1,6 +1,5 @@
-﻿using System.Globalization;
-using System.Management.Automation;
-using System.Text;
+﻿using System.Diagnostics;
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace PowerShellScriptRunner.Services
@@ -56,38 +55,25 @@ namespace PowerShellScriptRunner.Services
             return parameters;
         }
 
-        public async Task<string> ExecuteScriptAsync(string scriptPath, Dictionary<string, object> parameters)
+        public void RunScriptInNewWindow(string scriptPath, Dictionary<string, object> parameters)
         {
-            if (!File.Exists(scriptPath))
+            // Convert dictionary to a PowerShell argument string
+            string paramString = string.Join(" ", parameters
+                .Where(p => !(p.Value is bool) || (bool)p.Value) // Only include switch ps param if true
+                .Select(p => p.Value is bool ? $"-{p.Key}" : $"-{p.Key} \"{p.Value}\""));
+
+            // PowerShell command to execute
+            string command = $"powershell -NoExit -ExecutionPolicy Bypass -File \"{scriptPath}\" {paramString}";
+
+            // Start a new PowerShell process in a separate window
+            ProcessStartInfo psi = new ProcessStartInfo
             {
-                throw new FileNotFoundException($"Script not found: {scriptPath}");
-            }
+                FileName = "cmd.exe",
+                Arguments = $"/C start {command}",  // Opens in a new window
+                UseShellExecute = true
+            };
 
-            using (PowerShell ps = PowerShell.Create())
-            {
-                ps.AddScript(await File.ReadAllTextAsync(scriptPath));
-
-                foreach (var param in parameters)
-                {
-                    ps.AddParameter(param.Key, param.Value);
-                }
-
-                StringBuilder output = new StringBuilder();
-                var results = await Task.Run(() => ps.Invoke());
-
-                if (ps.HadErrors)
-                {
-                    var errors = string.Join(Environment.NewLine, ps.Streams.Error.Select(e => e.ToString()));
-                    throw new InvalidOperationException($"PowerShell script execution failed:\n{errors}");
-                }
-
-                foreach (var result in results)
-                {
-                    output.AppendLine(result.ToString());
-                }
-
-                return output.ToString().Trim();
-            }
+            Process.Start(psi);
         }
 
         private Type MapPowerShellType(string powerShellType)
@@ -95,7 +81,8 @@ namespace PowerShellScriptRunner.Services
             return powerShellType.ToLower() switch
             {
                 "string" => typeof(string),
-                "bool" => typeof(bool),
+                "bool" => typeof(bool), // Currently doesn't work as params are passed as strings, use switch instead in PowerShell script
+                "switch" => typeof(bool),
                 "datetime" => typeof(DateTime),
                 "int" => typeof(int),
                 "decimal" => typeof(decimal),

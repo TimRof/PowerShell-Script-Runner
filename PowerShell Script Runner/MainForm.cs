@@ -69,7 +69,6 @@ namespace PowerShellScriptRunner
             });
         }
 
-
         private void CreateParameterControl(string name, Type type, int yOffset, object? defaultValue)
         {
             var lbl = new Label { Text = $"{name}:", Top = yOffset };
@@ -88,7 +87,7 @@ namespace PowerShellScriptRunner
             _parameterInputs[name] = inputControl;
         }
 
-        private async void runScriptButton_Click(object sender, EventArgs e)
+        private void runScriptButton_Click(object sender, EventArgs e)
         {
             if (scriptComboBox.SelectedItem == null) return;
 
@@ -97,8 +96,7 @@ namespace PowerShellScriptRunner
 
             try
             {
-                string output = await _powerShellService.ExecuteScriptAsync(scriptPath, parameters);
-                outputRichTextBox.Invoke(() => outputRichTextBox.Text = output);
+                _powerShellService.RunScriptInNewWindow(scriptPath, parameters);
             }
             catch (Exception ex)
             {
@@ -116,7 +114,7 @@ namespace PowerShellScriptRunner
                 {
                     TextBox txtBox => txtBox.Text,
                     CheckBox checkBox => checkBox.Checked,
-                    DateTimePicker dateTimePicker => dateTimePicker.Value,
+                    DateTimePicker dateTimePicker => dateTimePicker.Value.ToString("yyyy-MM-dd"),
                     NumericUpDown numericUpDown => numericUpDown.Value,
                     _ => null
                 };
@@ -138,6 +136,11 @@ namespace PowerShellScriptRunner
         private void ShowError(string title, Exception ex)
         {
             MessageBox.Show($"{title}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        private void scriptListRefreshButton_Click(object sender, EventArgs e)
+        {
+            LoadLocalScriptsAsync();
         }
     }
 }

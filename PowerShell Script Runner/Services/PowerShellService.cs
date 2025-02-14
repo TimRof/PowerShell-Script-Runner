@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace PowerShellScriptRunner.Services
 {
+    // TODO: Implement default values for boolean (switch) parameters
     class PowerShellService
     {
         private readonly string _scriptsDirectory;
@@ -23,7 +24,7 @@ namespace PowerShellScriptRunner.Services
             return await Task.Run(() => Directory.GetFiles(_scriptsDirectory, "*.ps1"));
         }
 
-        public async Task<List<(string Name, Type DataType, object? DefaultValue)>> GetScriptParametersAsync(string scriptPath)
+        public static async Task<List<(string Name, Type DataType, object? DefaultValue)>> GetScriptParametersAsync(string scriptPath)
         {
             var parameters = new List<(string, Type, object?)>();
 
@@ -34,23 +35,29 @@ namespace PowerShellScriptRunner.Services
 
             string scriptContent = await File.ReadAllTextAsync(scriptPath);
 
-            Regex regex = new Regex(@"\[\s*(\w+)\s*\]\s*\$(\w+)(?:\s*=\s*['\""]?([^#\r\n'\""]+)['\""]?)?", RegexOptions.Multiline);
-            MatchCollection matches = regex.Matches(scriptContent);
-
-            foreach (Match match in matches)
+            // Extract only the first top-level `param (...)` block before any function definitions
+            Match paramBlockMatch = Regex.Match(scriptContent, @"(?s)^\s*param\s*\((.*?)\)(?:\r?\n|$)", RegexOptions.IgnoreCase);
+            if (!paramBlockMatch.Success)
             {
-                if (match.Groups.Count > 2)
-                {
-                    string paramType = match.Groups[1].Value;
-                    string paramName = match.Groups[2].Value;
-                    string? defaultValue = match.Groups[3].Success ? match.Groups[3].Value.Trim() : null;
-
-                    Type mappedType = MapPowerShellType(paramType);
-                    object? parsedDefaultValue = defaultValue != null ? ConvertToType(defaultValue, mappedType) : null;
-
-                    parameters.Add((paramName, mappedType, parsedDefaultValue));
-                }
+                return parameters;
             }
+
+            string paramBlock = paramBlockMatch.Groups[1].Value; // Extract content inside `param (...)`
+
+            Regex paramRegex = new Regex(@"\[\s*(\w+)\s*\]\s*\$(\w+)(?:\s*=\s*(?:(['""])(.*?)\3|([^,\r\n)]+)))?", RegexOptions.Multiline);
+
+            MatchCollection matches = paramRegex.Matches(paramBlock);
+
+            parameters.AddRange(from Match match in matches
+                                let paramType = match.Groups[1].Value
+                                let paramName = match.Groups[2].Value
+                                let defaultValueString = match.Groups[5].Value.Trim()
+                                let defaultValue = match.Groups[4].Success ? match.Groups[4].Value.Trim()
+                                                    : match.Groups[5].Success ? defaultValueString
+                                                    : null
+                                let mappedType = MapPowerShellType(paramType)
+                                let parsedDefaultValue = mappedType == typeof(bool) && defaultValue == null ? false : ConvertToType(defaultValue, mappedType)
+                                select (paramName, mappedType, parsedDefaultValue));
 
             return parameters;
         }
@@ -59,7 +66,7 @@ namespace PowerShellScriptRunner.Services
         {
             // Convert dictionary to a PowerShell argument string
             string paramString = string.Join(" ", parameters
-                .Where(p => !(p.Value is bool) || (bool)p.Value) // Only include switch ps param if true
+                .Where(p => !(p.Value is bool) || (bool)p.Value) // Only include switch param if true
                 .Select(p => p.Value is bool ? $"-{p.Key}" : $"-{p.Key} \"{p.Value}\""));
 
             // PowerShell command to execute
@@ -76,12 +83,12 @@ namespace PowerShellScriptRunner.Services
             Process.Start(psi);
         }
 
-        private Type MapPowerShellType(string powerShellType)
+        private static Type MapPowerShellType(string powerShellType)
         {
             return powerShellType.ToLower() switch
             {
                 "string" => typeof(string),
-                "bool" => typeof(bool), // Currently doesn't work as params are passed as strings, use switch instead in PowerShell script
+                "bool" => typeof(bool), // Switch param mapped to bool
                 "switch" => typeof(bool),
                 "datetime" => typeof(DateTime),
                 "int" => typeof(int),
@@ -95,15 +102,29 @@ namespace PowerShellScriptRunner.Services
             };
         }
 
-        private object? ConvertToType(string value, Type targetType)
+        private static object? ConvertToType(string value, Type targetType)
         {
             try
             {
                 value = value.Trim().Trim('\'', '"'); // Remove extra quotes if present
 
-                return targetType == typeof(bool) ? value.Equals("true", StringComparison.OrdinalIgnoreCase) :
-                       targetType == typeof(DateTime) ? DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ? date : null :
+                if (targetType == typeof(bool))
+                {
+                    return value.Equals("true", StringComparison.OrdinalIgnoreCase);
+                }
+                else
+                {
+                    if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+                    {
+                        return targetType == typeof(DateTime) ? date :
                        Convert.ChangeType(value, targetType);
+                    }
+                    else
+                    {
+                        return targetType == typeof(DateTime) ? null :
+                       Convert.ChangeType(value, targetType);
+                    }
+                }
             }
             catch
             {

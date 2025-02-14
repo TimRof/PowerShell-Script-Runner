@@ -45,7 +45,7 @@
             scriptComboBox.Name = "scriptComboBox";
             scriptComboBox.Size = new Size(277, 28);
             scriptComboBox.TabIndex = 0;
-            scriptComboBox.SelectedIndexChanged += scriptComboBox_SelectedIndexChanged;
+            scriptComboBox.SelectedIndexChanged += ScriptComboBox_SelectedIndexChanged;
             // 
             // scriptComboBoxLabel
             // 
@@ -106,7 +106,7 @@
             scriptListRefreshButton.TabIndex = 8;
             scriptListRefreshButton.Text = "↻";
             scriptListRefreshButton.UseVisualStyleBackColor = true;
-            scriptListRefreshButton.Click += scriptListRefreshButton_Click;
+            scriptListRefreshButton.Click += ScriptListRefreshButton_Click;
             // 
             // MainForm
             // 
@@ -122,6 +122,7 @@
             Controls.Add(panelBorder);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             Margin = new Padding(3, 4, 3, 4);
+            MaximizeBox = false;
             Name = "MainForm";
             ShowIcon = false;
             Text = "PowerShell Script Runner";

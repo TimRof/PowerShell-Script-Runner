@@ -23,13 +23,13 @@ namespace PowerShellScriptRunner
             LoadLocalScriptsAsync();
         }
 
-        private async void LoadLocalScriptsAsync()
+        private async Task LoadLocalScriptsAsync()
         {
             try
             {
                 var scripts = await _powerShellService.GetAvailableScriptsAsync();
 
-                scriptComboBox.Invoke(() =>
+                await scriptComboBox.InvokeAsync(() =>
                 {
                     scriptComboBox.Items.Clear();
                     scriptComboBox.Items.AddRange(scripts.Select(Path.GetFileName).ToArray());
@@ -53,9 +53,9 @@ namespace PowerShellScriptRunner
             if (scriptComboBox.SelectedItem == null) return;
 
             string scriptPath = GetSelectedScriptPath();
-            var parameters = await _powerShellService.GetScriptParametersAsync(scriptPath);
+            var parameters = await PowerShellService.GetScriptParametersAsync(scriptPath);
 
-            parametersPanel.Invoke(() =>
+            await parametersPanel.InvokeAsync(() =>
             {
                 parametersPanel.Controls.Clear();
                 _parameterInputs.Clear();
@@ -128,17 +128,17 @@ namespace PowerShellScriptRunner
             return Path.Combine(_scriptsDirectory, scriptComboBox.SelectedItem.ToString() ?? string.Empty);
         }
 
-        private async void scriptComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        private async void ScriptComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             await LoadScriptParametersAsync();
         }
 
-        private void ShowError(string title, Exception ex)
+        private static void ShowError(string title, Exception ex)
         {
             MessageBox.Show($"{title}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
-        private void scriptListRefreshButton_Click(object sender, EventArgs e)
+        private void ScriptListRefreshButton_Click(object sender, EventArgs e)
         {
             LoadLocalScriptsAsync();
         }

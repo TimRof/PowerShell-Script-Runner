@@ -20,7 +20,7 @@ namespace PowerShellScriptRunner
 
             _powerShellService = new PowerShellService(_scriptsDirectory);
 
-            LoadLocalScriptsAsync();
+            LoadLocalScriptsAsync().ConfigureAwait(false);
         }
 
         private async Task LoadLocalScriptsAsync()
@@ -71,14 +71,16 @@ namespace PowerShellScriptRunner
 
         private void CreateParameterControl(string name, Type type, int yOffset, object? defaultValue)
         {
-            var lbl = new Label { Text = $"{name}:", Top = yOffset };
+            int controlWidth = parametersPanel.Size.Width / 2;
+            int labelWidth = (int)Math.Floor(controlWidth * 0.7);
+            var lbl = new Label { Text = $"{name}:", Top = yOffset, Width = labelWidth };
             Control inputControl = type switch
             {
-                Type t when t == typeof(bool) => new CheckBox { Name = name, Top = yOffset, Left = 100, Checked = defaultValue is bool b && b },
-                Type t when t == typeof(DateTime) => new DateTimePicker { Name = name, Top = yOffset, Left = 100, Value = defaultValue is DateTime dt ? dt : DateTime.Now },
-                Type t when t == typeof(int) => new NumericUpDown { Name = name, Top = yOffset, Left = 100, Width = 200, Minimum = 0, Maximum = 1000000, Value = defaultValue is int i ? i : 0 },
-                Type t when t == typeof(decimal) => new NumericUpDown { Name = name, Top = yOffset, Left = 100, Width = 200, DecimalPlaces = 2, Minimum = 0, Maximum = 1000000, Value = defaultValue is decimal d ? d : 0 },
-                Type t when t == typeof(string) => new TextBox { Name = name, Top = yOffset, Left = 100, Width = 200, Text = defaultValue as string ?? "" },
+                Type t when t == typeof(bool) => new CheckBox { Name = name, Top = yOffset, Left = labelWidth + 25, Checked = defaultValue is bool b && b },
+                Type t when t == typeof(DateTime) => new DateTimePicker { Name = name, Top = yOffset, Left = labelWidth + 25, Width = controlWidth, Format = DateTimePickerFormat.Short, Value = defaultValue is DateTime dt ? dt : DateTime.Now },
+                Type t when t == typeof(int) => new NumericUpDown { Name = name, Top = yOffset, Left = labelWidth + 25, Width = controlWidth, Minimum = 0, Maximum = 1000000, Value = defaultValue is int i ? i : 0 },
+                Type t when t == typeof(decimal) => new NumericUpDown { Name = name, Top = yOffset, Left = labelWidth + 25, Width = controlWidth, DecimalPlaces = 2, Minimum = 0, Maximum = 1000000, Value = defaultValue is decimal d ? d : 0 },
+                Type t when t == typeof(string) => new TextBox { Name = name, Top = yOffset, Left = labelWidth + 25, Width = controlWidth, Text = defaultValue as string ?? "" },
                 _ => throw new ArgumentException($"Unsupported parameter type: {type}")
             };
 
@@ -87,7 +89,7 @@ namespace PowerShellScriptRunner
             _parameterInputs[name] = inputControl;
         }
 
-        private void runScriptButton_Click(object sender, EventArgs e)
+        private async void runScriptButton_Click(object sender, EventArgs e)
         {
             if (scriptComboBox.SelectedItem == null) return;
 
@@ -96,7 +98,7 @@ namespace PowerShellScriptRunner
 
             try
             {
-                _powerShellService.RunScriptInNewWindow(scriptPath, parameters);
+                await Task.Run(() => _powerShellService.RunScriptInNewWindow(scriptPath, parameters));
             }
             catch (Exception ex)
             {
@@ -138,9 +140,9 @@ namespace PowerShellScriptRunner
             MessageBox.Show($"{title}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
-        private void ScriptListRefreshButton_Click(object sender, EventArgs e)
+        private async void ScriptListRefreshButton_Click(object sender, EventArgs e)
         {
-            LoadLocalScriptsAsync();
+            await LoadLocalScriptsAsync();
         }
     }
 }

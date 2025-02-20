@@ -41,13 +41,14 @@ namespace PowerShellScriptRunner.Services
         /// </summary>
         /// <param name="scriptPath">The path to the PowerShell script.</param>
         /// <returns>A list of tuples containing parameter name, data type, and default value.</returns>
-        public static async Task<List<(string Name, Type DataType, object? DefaultValue)>> GetScriptParametersAsync(string scriptPath)
+        public static async Task<(List<(string Name, Type DataType, object? DefaultValue)>, Dictionary<string, string>)> GetScriptParametersAsync(string scriptPath)
         {
             var parameters = new List<(string, Type, object?)>();
+            var dependencies = new Dictionary<string, string>();
 
             if (!File.Exists(scriptPath))
             {
-                return parameters;
+                return (parameters, dependencies);
             }
 
             string scriptContent = await File.ReadAllTextAsync(scriptPath);
@@ -56,14 +57,40 @@ namespace PowerShellScriptRunner.Services
             Match paramBlockMatch = Regex.Match(scriptContent, @"(?s)^\s*param\s*\((.*?)\)(?:\r?\n|$)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
             if (!paramBlockMatch.Success)
             {
-                return parameters;
+                return (parameters, dependencies);
             }
 
             string paramBlock = paramBlockMatch.Groups[1].Value; // Extract content inside `param (...)` block
 
-            Regex paramRegex = new Regex(@"\[\s*(\w+)\s*\]\s*\$(\w+)(?:\s*=\s*(?:(['""])(.*?)\3|([^,\r\n)]+)))?", RegexOptions.Multiline | RegexOptions.Compiled);
+            Regex paramRegex = new Regex(@"
+    \[\s*(\w+)\s*\]              # Match type: [string], [datetime], etc.
+    \s*\$(\w+)                   # Match parameter name: $StartDate, $EndDate
+    (?:\s*=\s*                   # Start of optional default value section
+        (?:(['""])(.*?)\1 |       # Match quoted values
+        ([^,#\r\n\)]+))           # Match non-quoted values
+    )?                            # End of optional default value section
+    (?:\s*,\s*)?                  # Match optional comma
+    (?:\s*\#\s*DependsOn:\s*(\w+))? # Match optional #DependsOn: Dependency
+", RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
+
 
             MatchCollection matches = paramRegex.Matches(paramBlock);
+
+            foreach (Match match in matches)
+            {
+                // Extract the dependency if it exists
+                string dependency = match.Groups[6].Value.Trim();
+
+                if (!string.IsNullOrEmpty(dependency))
+                {
+                    dependencies[match.Groups[2].Value] = dependency;
+                }
+
+                if (match.Groups[1].Value == "bool")
+                {
+                    throw new ArgumentException("Booleans are not supported, use Switch instead.");
+                }
+            }
 
             parameters.AddRange(from Match match in matches
                                 let paramType = match.Groups[1].Value
@@ -76,7 +103,7 @@ namespace PowerShellScriptRunner.Services
                                 let parsedDefaultValue = mappedType == typeof(bool) && defaultValue == null ? false : ConvertToType(defaultValue, mappedType)
                                 select (paramName, mappedType, parsedDefaultValue));
 
-            return parameters;
+            return (parameters, dependencies);
         }
 
         /// <summary>
@@ -150,6 +177,10 @@ namespace PowerShellScriptRunner.Services
         {
             try
             {
+                if (String.IsNullOrEmpty(value))
+                {
+                    throw new ArgumentNullException(nameof(value));
+                }
                 value = value.Trim().Trim('\'', '"'); // Remove extra quotes if present
 
                 if (targetType == typeof(bool))

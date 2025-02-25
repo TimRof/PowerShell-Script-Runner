@@ -6,8 +6,8 @@ namespace PowerShellScriptRunner
     {
         private readonly string _scriptsDirectory;
         private readonly PowerShellService _powerShellService;
-        private readonly Dictionary<string, Control> _parameterInputs = new();
-        private readonly Dictionary<string, string> _dependencies = new();
+        private readonly Dictionary<string, Control> _parameterInputs = [];
+        private readonly Dictionary<string, string> _dependencies = [];
 
         public MainForm()
         {

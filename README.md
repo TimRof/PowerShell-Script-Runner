@@ -36,4 +36,6 @@ PowerShell Script Runner is a WinForms application designed to execute PowerShel
 
 - Ensure scripts are structured correctly with `param ()` blocks for parameter detection.
 - Parameter dependencies affect the UI only; all parameters are still passed to the script.
+- Run application in Administrator mode to run scripts in elevated mode.
 - Scripts must be compatible with the PowerShell environment on the host machine.
+- Application might have to be run once for Script folder to appear, otherwise create it manually.

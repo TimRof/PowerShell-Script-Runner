@@ -7,7 +7,7 @@ namespace PowerShellScriptRunner.Services
     /// <summary>
     /// Service for running PowerShell scripts.
     /// </summary>
-    class PowerShellService
+    partial class PowerShellService
     {
         private readonly string _scriptsDirectory;
 
@@ -54,7 +54,7 @@ namespace PowerShellScriptRunner.Services
             string scriptContent = await File.ReadAllTextAsync(scriptPath);
 
             // Extract only the first top-level `param (...)` block
-            Match paramBlockMatch = Regex.Match(scriptContent, @"(?s)^\s*param\s*\((.*?)\)(?:\r?\n|$)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+            Match paramBlockMatch = ParamBlockRegex().Match(scriptContent);
             if (!paramBlockMatch.Success)
             {
                 return (parameters, dependencies);
@@ -62,16 +62,7 @@ namespace PowerShellScriptRunner.Services
 
             string paramBlock = paramBlockMatch.Groups[1].Value; // Extract content inside `param (...)` block
 
-            Regex paramRegex = new Regex(@"
-    \[\s*(\w+)\s*\]              # Match type: [string], [datetime], etc.
-    \s*\$(\w+)                   # Match parameter name: $StartDate, $EndDate
-    (?:\s*=\s*                   # Start of optional default value section
-        (?:(['""])(.*?)\1 |       # Match quoted values
-        ([^,#\r\n\)]+))           # Match non-quoted values
-    )?                            # End of optional default value section
-    (?:\s*,\s*)?                  # Match optional comma
-    (?:\s*\#\s*DependsOn:\s*(\w+))? # Match optional #DependsOn: Dependency
-", RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
+            Regex paramRegex = ParametersRegex();
 
 
             MatchCollection matches = paramRegex.Matches(paramBlock);
@@ -111,7 +102,7 @@ namespace PowerShellScriptRunner.Services
         /// </summary>
         /// <param name="scriptPath">The path to the PowerShell script.</param>
         /// <param name="parameters">The parameters to pass to the script.</param>
-        public void RunScriptInNewWindow(string scriptPath, Dictionary<string, object> parameters)
+        public static void RunScriptInNewWindow(string scriptPath, Dictionary<string, object> parameters)
         {
             string paramString = ConvertParametersToString(parameters);
             string command = BuildPowerShellCommand(scriptPath, paramString);
@@ -122,7 +113,7 @@ namespace PowerShellScriptRunner.Services
         {
             // TODO: Changes needed for Boolean parameters
             return string.Join(" ", parameters
-                .Where(p => !(p.Value is bool) || (bool)p.Value) // Only include switch param if true
+                .Where(p => p.Value is not bool || (bool)p.Value) // Only include switch param if true
                 .Select(p => p.Value is bool ? $"-{p.Key}" : $"-{p.Key} \"{p.Value}\""));
         }
 
@@ -133,7 +124,7 @@ namespace PowerShellScriptRunner.Services
 
         private static void StartPowerShellProcess(string command)
         {
-            ProcessStartInfo psi = new ProcessStartInfo
+            ProcessStartInfo psi = new()
             {
                 FileName = "cmd.exe",
                 Arguments = $"/C start {command}",  // Opens in a new window
@@ -206,5 +197,19 @@ namespace PowerShellScriptRunner.Services
                 return null; // If conversion fails, return null
             }
         }
+
+        [GeneratedRegex(@"
+    \[\s*(\w+)\s*\]              # Match type: [string], [datetime], etc.
+    \s*\$(\w+)                   # Match parameter name: $StartDate, $EndDate
+    (?:\s*=\s*                   # Start of optional default value section
+        (?:(['""])(.*?)\1 |       # Match quoted values
+        ([^,#\r\n\)]+))           # Match non-quoted values
+    )?                            # End of optional default value section
+    (?:\s*,\s*)?                  # Match optional comma
+    (?:\s*\#\s*DependsOn:\s*(\w+))? # Match optional #DependsOn: Dependency
+", RegexOptions.Multiline | RegexOptions.Compiled | RegexOptions.IgnorePatternWhitespace)]
+        private static partial Regex ParametersRegex();
+        [GeneratedRegex(@"(?s)^\s*param\s*\((.*?)\)(?:\r?\n|$)", RegexOptions.IgnoreCase | RegexOptions.Compiled, "en-NL")]
+        private static partial Regex ParamBlockRegex();
     }
 }

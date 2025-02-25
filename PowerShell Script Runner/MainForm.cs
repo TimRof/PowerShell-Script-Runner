@@ -1,4 +1,5 @@
-using PowerShellScriptRunner.Services;
+﻿using PowerShellScriptRunner.Services;
+using System.Security.Principal;
 
 namespace PowerShellScriptRunner
 {
@@ -12,6 +13,7 @@ namespace PowerShellScriptRunner
         public MainForm()
         {
             InitializeComponent();
+            CheckAdminPrivileges();
             _scriptsDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Scripts");
 
             if (!Directory.Exists(_scriptsDirectory))
@@ -22,6 +24,26 @@ namespace PowerShellScriptRunner
             _powerShellService = new PowerShellService(_scriptsDirectory);
 
             LoadLocalScriptsAsync().ConfigureAwait(false);
+        }
+
+        private static bool IsAdministrator()
+        {
+            return (new WindowsPrincipal(WindowsIdentity.GetCurrent()))
+                     .IsInRole(WindowsBuiltInRole.Administrator);
+        }
+
+        private void CheckAdminPrivileges()
+        {
+            if (!IsAdministrator())
+            {
+                adminWarningLabel.Text = "Warning: The application is not running as Administrator. Scripts may fail!";
+                adminWarningLabel.ForeColor = System.Drawing.Color.Red;
+                adminWarningLabel.Visible = true;
+            }
+            else
+            {
+                adminWarningLabel.Visible = false;
+            }
         }
 
         private async Task LoadLocalScriptsAsync()
@@ -68,7 +90,7 @@ namespace PowerShellScriptRunner
                     _dependencies[dep.Key] = dep.Value;
                 }
 
-                if (!parameters.Any())
+                if (parameters.Count == 0)
                 {
                     var lbl = new Label { Text = "No parameters found.", Width = 200 };
                     parametersPanel.Controls.Add(lbl);
@@ -150,15 +172,12 @@ namespace PowerShellScriptRunner
                 string paramName = entry.Key;
                 Control control = entry.Value;
 
-                if (_dependencies.ContainsKey(paramName))
+                if (_dependencies.TryGetValue(paramName, out string? dependentParam))
                 {
-                    string dependentParam = _dependencies[paramName];
 
                     // Check the value of the dependent parameter and disable/enable the control
-                    if (_parameterInputs.ContainsKey(dependentParam))
+                    if (_parameterInputs.TryGetValue(dependentParam, out Control? dependentControl))
                     {
-                        Control dependentControl = _parameterInputs[dependentParam];
-
                         bool isDependentEnabled = dependentControl switch
                         {
                             CheckBox checkBox => checkBox.Checked,
@@ -174,7 +193,7 @@ namespace PowerShellScriptRunner
             }
         }
 
-        private async void runScriptButton_Click(object sender, EventArgs e)
+        private async void RunScriptButton_Click(object sender, EventArgs e)
         {
             if (scriptComboBox.SelectedItem == null) return;
 
@@ -183,7 +202,7 @@ namespace PowerShellScriptRunner
 
             try
             {
-                await Task.Run(() => _powerShellService.RunScriptInNewWindow(scriptPath, parameters));
+                await Task.Run(() => PowerShellService.RunScriptInNewWindow(scriptPath, parameters));
             }
             catch (Exception ex)
             {

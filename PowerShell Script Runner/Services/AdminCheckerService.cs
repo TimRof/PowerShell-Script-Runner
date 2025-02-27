@@ -1,10 +1,10 @@
 ﻿using System.Security.Principal;
 
-namespace PowerShell_Script_Runner.Services
+namespace PowerShellScriptRunner.Services
 {
-    static class AdminCheckerService
+    public static class AdminCheckerService
     {
-        public static bool IsAdmin()
+        public static bool IsAdministrator()
         {
             return new WindowsPrincipal(WindowsIdentity.GetCurrent())
                 .IsInRole(WindowsBuiltInRole.Administrator);

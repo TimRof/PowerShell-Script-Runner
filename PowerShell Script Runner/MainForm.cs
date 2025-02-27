@@ -1,5 +1,5 @@
 ﻿using PowerShellScriptRunner.Services;
-using System.Security.Principal;
+using System.Diagnostics;
 
 namespace PowerShellScriptRunner
 {
@@ -26,15 +26,9 @@ namespace PowerShellScriptRunner
             LoadLocalScriptsAsync().ConfigureAwait(false);
         }
 
-        private static bool IsAdministrator()
-        {
-            return (new WindowsPrincipal(WindowsIdentity.GetCurrent()))
-                     .IsInRole(WindowsBuiltInRole.Administrator);
-        }
-
         private void CheckAdminPrivileges()
         {
-            if (!IsAdministrator())
+            if (!AdminCheckerService.IsAdministrator())
             {
                 adminWarningLabel.Text = "Warning: The application is not running as Administrator. Scripts may fail!";
                 adminWarningLabel.ForeColor = System.Drawing.Color.Red;
@@ -46,7 +40,7 @@ namespace PowerShellScriptRunner
             }
         }
 
-        private async Task LoadLocalScriptsAsync()
+        private async Task LoadLocalScriptsAsync(string? selectedScriptPath = null)
         {
             try
             {
@@ -56,12 +50,28 @@ namespace PowerShellScriptRunner
                 {
                     scriptComboBox.Items.Clear();
                     scriptComboBox.Items.AddRange(scripts.Select(Path.GetFileName).ToArray());
-
-                    if (scriptComboBox.Items.Count > 0)
-                    {
-                        scriptComboBox.SelectedIndex = 0;
-                    }
                 });
+
+                if (!string.IsNullOrEmpty(selectedScriptPath) && File.Exists(selectedScriptPath))
+                {
+                    string selectedScriptName = Path.GetFileName(selectedScriptPath);
+                    int index = scriptComboBox.Items.IndexOf(selectedScriptName);
+                    if (index >= 0)
+                    {
+                        scriptComboBox.SelectedIndex = index;
+                    }
+                    else
+                    {
+                        if (scriptComboBox.Items.Count > 0)
+                        {
+                            scriptComboBox.SelectedIndex = 0;
+                        }
+                    }
+                }
+                else if (scriptComboBox.Items.Count > 0)
+                {
+                    scriptComboBox.SelectedIndex = 0;
+                }
 
                 await LoadScriptParametersAsync();
             }
@@ -247,7 +257,16 @@ namespace PowerShellScriptRunner
 
         private async void ScriptListRefreshButton_Click(object sender, EventArgs e)
         {
-            await LoadLocalScriptsAsync();
+            string? selectedScriptPath = scriptComboBox.SelectedItem != null
+                ? Path.Combine(_scriptsDirectory, scriptComboBox.SelectedItem.ToString() ?? string.Empty)
+                : null;
+
+            await LoadLocalScriptsAsync(selectedScriptPath);
+        }
+
+        private void OpenFolderButton_Click(object sender, EventArgs e)
+        {
+            Process.Start("explorer.exe", _scriptsDirectory);
         }
     }
 }

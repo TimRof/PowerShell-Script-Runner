@@ -36,40 +36,43 @@
             runScriptButton = new Button();
             scriptListRefreshButton = new Button();
             adminWarningLabel = new Label();
+            openFolderButton = new Button();
             SuspendLayout();
             // 
             // scriptComboBox
             // 
             scriptComboBox.FormattingEnabled = true;
-            scriptComboBox.Location = new Point(12, 27);
+            scriptComboBox.Location = new Point(14, 36);
+            scriptComboBox.Margin = new Padding(3, 4, 3, 4);
             scriptComboBox.Name = "scriptComboBox";
-            scriptComboBox.Size = new Size(243, 23);
+            scriptComboBox.Size = new Size(277, 28);
             scriptComboBox.TabIndex = 0;
             scriptComboBox.SelectedIndexChanged += ScriptComboBox_SelectedIndexChanged;
             // 
             // scriptComboBoxLabel
             // 
             scriptComboBoxLabel.AutoSize = true;
-            scriptComboBoxLabel.Location = new Point(12, 9);
+            scriptComboBoxLabel.Location = new Point(14, 12);
             scriptComboBoxLabel.Name = "scriptComboBoxLabel";
-            scriptComboBoxLabel.Size = new Size(74, 15);
+            scriptComboBoxLabel.Size = new Size(94, 20);
             scriptComboBoxLabel.TabIndex = 1;
             scriptComboBoxLabel.Text = "Select Script:";
             // 
             // parametersPanel
             // 
             parametersPanel.AutoScroll = true;
-            parametersPanel.Location = new Point(12, 71);
+            parametersPanel.Location = new Point(14, 95);
+            parametersPanel.Margin = new Padding(3, 4, 3, 4);
             parametersPanel.Name = "parametersPanel";
-            parametersPanel.Size = new Size(542, 199);
+            parametersPanel.Size = new Size(619, 265);
             parametersPanel.TabIndex = 6;
             // 
             // parametersPanelLabel
             // 
             parametersPanelLabel.AutoSize = true;
-            parametersPanelLabel.Location = new Point(12, 53);
+            parametersPanelLabel.Location = new Point(14, 71);
             parametersPanelLabel.Name = "parametersPanelLabel";
-            parametersPanelLabel.Size = new Size(69, 15);
+            parametersPanelLabel.Size = new Size(85, 20);
             parametersPanelLabel.TabIndex = 0;
             parametersPanelLabel.Text = "Parameters:";
             // 
@@ -77,16 +80,18 @@
             // 
             panelBorder.AutoScroll = true;
             panelBorder.BackColor = SystemColors.ControlDarkDark;
-            panelBorder.Location = new Point(11, 70);
+            panelBorder.Location = new Point(13, 93);
+            panelBorder.Margin = new Padding(3, 4, 3, 4);
             panelBorder.Name = "panelBorder";
-            panelBorder.Size = new Size(544, 201);
+            panelBorder.Size = new Size(622, 268);
             panelBorder.TabIndex = 7;
             // 
             // runScriptButton
             // 
-            runScriptButton.Location = new Point(10, 277);
+            runScriptButton.Location = new Point(11, 369);
+            runScriptButton.Margin = new Padding(3, 4, 3, 4);
             runScriptButton.Name = "runScriptButton";
-            runScriptButton.Size = new Size(93, 30);
+            runScriptButton.Size = new Size(106, 40);
             runScriptButton.TabIndex = 3;
             runScriptButton.Text = "Run Script";
             runScriptButton.UseVisualStyleBackColor = true;
@@ -95,11 +100,11 @@
             // scriptListRefreshButton
             // 
             scriptListRefreshButton.Font = new Font("Segoe UI Emoji", 8F);
-            scriptListRefreshButton.Location = new Point(257, 27);
+            scriptListRefreshButton.Location = new Point(294, 36);
             scriptListRefreshButton.Margin = new Padding(0);
             scriptListRefreshButton.Name = "scriptListRefreshButton";
             scriptListRefreshButton.RightToLeft = RightToLeft.No;
-            scriptListRefreshButton.Size = new Size(24, 21);
+            scriptListRefreshButton.Size = new Size(28, 28);
             scriptListRefreshButton.TabIndex = 8;
             scriptListRefreshButton.Text = "↻";
             scriptListRefreshButton.UseVisualStyleBackColor = true;
@@ -108,17 +113,28 @@
             // adminWarningLabel
             // 
             adminWarningLabel.AutoSize = true;
-            adminWarningLabel.Location = new Point(109, 285);
+            adminWarningLabel.Location = new Point(125, 380);
             adminWarningLabel.Name = "adminWarningLabel";
-            adminWarningLabel.Size = new Size(110, 15);
+            adminWarningLabel.Size = new Size(136, 20);
             adminWarningLabel.TabIndex = 9;
             adminWarningLabel.Text = "Check Admin Label";
             // 
+            // openFolderButton
+            // 
+            openFolderButton.Location = new Point(325, 35);
+            openFolderButton.Name = "openFolderButton";
+            openFolderButton.Size = new Size(104, 28);
+            openFolderButton.TabIndex = 10;
+            openFolderButton.Text = "Open Folder";
+            openFolderButton.UseVisualStyleBackColor = true;
+            openFolderButton.Click += OpenFolderButton_Click;
+            // 
             // MainForm
             // 
-            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(566, 313);
+            ClientSize = new Size(647, 417);
+            Controls.Add(openFolderButton);
             Controls.Add(adminWarningLabel);
             Controls.Add(scriptListRefreshButton);
             Controls.Add(parametersPanel);
@@ -128,6 +144,7 @@
             Controls.Add(scriptComboBox);
             Controls.Add(panelBorder);
             FormBorderStyle = FormBorderStyle.FixedSingle;
+            Margin = new Padding(3, 4, 3, 4);
             MaximizeBox = false;
             Name = "MainForm";
             ShowIcon = false;
@@ -146,5 +163,6 @@
         private Button runScriptButton;
         private Button scriptListRefreshButton;
         private Label adminWarningLabel;
+        private Button openFolderButton;
     }
 }

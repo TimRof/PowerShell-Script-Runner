@@ -7,7 +7,7 @@ PowerShell Script Runner is a WinForms application designed to execute PowerShel
 ## Installation & Setup
 
 1. **Place Scripts**: Add your PowerShell scripts to the `Scripts` folder.
-2. **Define Parameters**: Ensure each script includes a parameter block at the top using the `param` keyword:
+2. **Define Parameters**: Ensure each script includes a parameter block at the top using the `param` keyword (must be at the top):
    ```powershell
    param (
        [string]$Name,

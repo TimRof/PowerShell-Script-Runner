@@ -23,7 +23,14 @@ PowerShell Script Runner is a WinForms application designed to execute PowerShel
        [datetime]$StartDate #DependsOn: Hidden
    )
    ```
-4. **Set Defaults (Optional)**: You can set defaults by adding ....
+4. **Set Defaults (Optional)**: You can set defaults by adding behind the parameter name:
+   ```powershell
+   param (
+       [string]$Name = "Default name",
+       [switch]$Hidden,
+       [datetime]$StartDate #DependsOn: Hidden
+   )
+   ```
 
 ## Usage
 
